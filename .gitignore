@@ -1,0 +1,12 @@
+final_test_chat.md
+session-ses_32ed.md
+
+__pycache__/
+
+test_pdf/
+
+models/
+
+.pytest_cache/
+
+.ruff_cache/

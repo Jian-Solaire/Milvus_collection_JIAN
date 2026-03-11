@@ -22,7 +22,10 @@ MILVUS_USER=your_user
 MILVUS_PASSWORD=your_password
 MILVUS_COLLECTION_NAME=rag_vectors
 MODEL_DEVICE=cuda  # 或 cpu
+
 ```
+记得拉docker，https://milvus.io/docs/zh/install_standalone-windows.md
+
 
 ## 启动服务
 

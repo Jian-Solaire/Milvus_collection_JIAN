@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 _bge_model = None
 _model_dimensions = None
+_model_warmed_up = False
 
 
 class BGEVectorizer:
@@ -61,9 +62,27 @@ class BGEVectorizer:
 
             _bge_model = self.model
 
+            # Auto warmup after loading
+            self.warmup()
+
         except Exception as e:
             logger.error(f"Load failed: {e}")
             raise
+
+    def warmup(self, num_warmup: int = 3) -> None:
+        """Warmup GPU with dummy inference to improve first-call performance."""
+        global _model_warmed_up
+        if _model_warmed_up:
+            return
+
+        logger.info(f"Warming up GPU with {num_warmup} iterations...")
+        dummy_texts = ["warmup text " + str(i) for i in range(num_warmup)]
+        try:
+            self.model.encode(dummy_texts, batch_size=1)
+            _model_warmed_up = True
+            logger.info("GPU warmup completed")
+        except Exception as e:
+            logger.warning(f"GPU warmup failed: {e}")
 
     @property
     def dense_dimension(self) -> int:

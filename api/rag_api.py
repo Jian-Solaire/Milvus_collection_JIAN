@@ -1,5 +1,6 @@
 """FastAPI RAG API endpoints."""
 
+import time
 import uuid
 import os
 import sys
@@ -152,6 +153,8 @@ async def ingest_files(request: FileIngestRequest):
             index_chunks,
         )
 
+        start_time = time.time()
+
         # Parse options
         options = request.options or {}
         chunk_opts = options.get("chunking", {})
@@ -160,7 +163,9 @@ async def ingest_files(request: FileIngestRequest):
         chunk_overlap = chunk_opts.get("overlap", settings.DEFAULT_CHUNK_OVERLAP)
 
         # Convert files to text
+        convert_start = time.time()
         converted = load_and_convert_files(request.file_paths)
+        convert_time = time.time() - convert_start
 
         if not converted:
             return error_response(
@@ -172,6 +177,7 @@ async def ingest_files(request: FileIngestRequest):
         metadata_list = [item["metadata"] for item in converted]
 
         # Chunk texts
+        chunk_start = time.time()
         chunks = load_and_chunk_texts(
             texts=texts,
             chunk_size=chunk_size,
@@ -179,20 +185,33 @@ async def ingest_files(request: FileIngestRequest):
             namespace=namespace,
             metadata_list=metadata_list,
         )
+        chunk_time = time.time() - chunk_start
 
         if not chunks:
             return error_response("No chunks generated", "Failed to chunk documents")
 
         # Index chunks
+        index_start = time.time()
         indexed = index_chunks(chunks=chunks, namespace=namespace)
+        index_time = time.time() - index_start
+
+        total_time = time.time() - start_time
 
         return success_response(
             data={
                 "files_processed": len(converted),
                 "chunks_generated": len(chunks),
                 "indexed_count": indexed,
+                "duration_seconds": round(total_time, 3),
             },
-            meta={"namespace": namespace},
+            meta={
+                "namespace": namespace,
+                "timing": {
+                    "document_processing_seconds": round(convert_time, 3),
+                    "chunking_seconds": round(chunk_time, 3),
+                    "indexing_seconds": round(index_time, 3),
+                },
+            },
         )
 
     except Exception as e:
@@ -203,6 +222,8 @@ async def ingest_files(request: FileIngestRequest):
 async def query_knowledge(request: QueryRequest):
     """Query knowledge base."""
     try:
+        start_time = time.time()
+
         # Parse options
         options = request.options or {}
         search_opts = options.get("search", {})
@@ -232,6 +253,8 @@ async def query_knowledge(request: QueryRequest):
             rrf_k=rrf_k,
         )
 
+        search_time = time.time() - start_time
+
         if result.get("success"):
             return success_response(
                 data={
@@ -239,6 +262,7 @@ async def query_knowledge(request: QueryRequest):
                     "count": result.get("count", 0),
                     "query": request.query,
                     "search_type": search_type,
+                    "duration_seconds": round(search_time, 3),
                 },
             )
         else:

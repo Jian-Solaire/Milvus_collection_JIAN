@@ -1,12 +1,39 @@
 final_test_chat.md
 session-ses_32ed.md
+*.md
 
 __pycache__/
 
 test_pdf/
+test_parallel_pdf.py
+test_pdf_rag.py
 
 models/
 
 .pytest_cache/
 
 .ruff_cache/
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+
+# Temp
+temp/
+tmp/
+
+# Python
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Data
+data/
+knowledge_base/

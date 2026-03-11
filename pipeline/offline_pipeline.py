@@ -171,43 +171,72 @@ def _fallback_text_reader(path: str) -> str:
             return ""
 
 
-def load_and_convert_files(file_paths: List[str]) -> List[Dict[str, Any]]:
+def load_and_convert_files(
+    file_paths: List[str],
+    parallel: bool = True,
+    max_workers: int = 4,
+) -> List[Dict[str, Any]]:
     """Load and convert multiple files to text.
 
     Args:
         file_paths: List of file paths
+        parallel: Enable parallel loading (default True)
+        max_workers: Max parallel workers (default 4)
 
     Returns:
         List of dicts with 'text' and 'metadata'
     """
+    if not parallel or len(file_paths) <= 1:
+        return _load_files_sequential(file_paths)
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     results = []
-
-    for path in file_paths:
-        if not os.path.exists(path):
-            logger.warning(f"File not found: {path}")
-            continue
-
-        if not _is_supported_format(path):
-            logger.warning(f"Unsupported format: {path}")
-            continue
-
-        text = _convert_to_markdown(path)
-        if not text.strip():
-            logger.warning(f"No content extracted from: {path}")
-            continue
-
-        results.append(
-            {
-                "text": text,
-                "metadata": {
-                    "source_path": path,
-                    "file_name": os.path.basename(path),
-                    "file_ext": os.path.splitext(path)[1],
-                },
-            }
-        )
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_path = {
+            executor.submit(_convert_single_file, path): path for path in file_paths
+        }
+        for future in as_completed(future_to_path):
+            result = future.result()
+            if result:
+                results.append(result)
 
     return results
+
+
+def _load_files_sequential(file_paths: List[str]) -> List[Dict[str, Any]]:
+    """Load files sequentially (fallback)."""
+    results = []
+    for path in file_paths:
+        result = _convert_single_file(path)
+        if result:
+            results.append(result)
+    return results
+
+
+def _convert_single_file(path: str) -> Optional[Dict[str, Any]]:
+    """Convert a single file to text dict."""
+    if not os.path.exists(path):
+        logger.warning(f"File not found: {path}")
+        return None
+
+    if not _is_supported_format(path):
+        logger.warning(f"Unsupported format: {path}")
+        return None
+
+    text = _convert_to_markdown(path)
+    if not text.strip():
+        logger.warning(f"No content extracted from: {path}")
+        return None
+
+    return {
+        "text": text,
+        "metadata": {
+            "source_path": path,
+            "file_name": os.path.basename(path),
+            "file_ext": os.path.splitext(path)[1],
+        },
+    }
 
 
 class MarkdownChunker:

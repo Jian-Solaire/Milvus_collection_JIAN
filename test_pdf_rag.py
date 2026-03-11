@@ -11,7 +11,6 @@ from pipeline.offline_pipeline import (
     load_and_chunk_texts,
     index_chunks,
 )
-from pipeline.online_pipeline import search_vectors
 from core.embedding import get_bge_vectorizer, get_dimension
 from stores.milvus_store import MilvusVectorStore, MilvusConnectionManager
 from config.settings import settings
